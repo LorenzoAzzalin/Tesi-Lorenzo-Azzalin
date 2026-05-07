@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import os
 
 # Cartella contenente i risultati dei modelli di machine learning
-# Qui sono salvati i file csv generati durante il training ML
 cartella_risultati_ml = os.path.join(
     "dataset_intero",
     "machine_learning",
@@ -11,7 +10,6 @@ cartella_risultati_ml = os.path.join(
 )
 
 # Cartella contenente i risultati del modello deep learning (ConvLSTM)
-# Contiene il file risultati_convlstm.csv prodotto dallo script di valutazione
 cartella_risultati_dl = os.path.join(
     "dataset_intero",
     "deep_learning",
@@ -41,7 +39,7 @@ percorso_file_dl = os.path.join(
     "risultati_convlstm.csv"
 )
 
-# Percorsi dei file di output
+# Percorsi file output
 percorso_output_confronto = os.path.join(
     cartella_confronto,
     "confronto_ml_deep_learning.csv"
@@ -57,8 +55,14 @@ percorso_grafico_orizzonte = os.path.join(
     "grafico_rmse_vs_orizzonte.png"
 )
 
+percorso_grafico_globale = os.path.join(
+    cartella_confronto,
+    "grafico_confronto_globale_modelli.png"
+)
 
-# Caricamento risultati machine learning
+
+# Caricamento risultati ML
+
 lista_risultati_ml = []
 
 print("Caricamento risultati machine learning")
@@ -71,10 +75,10 @@ for orizzonte, percorso_file in percorsi_file_ml.items():
 
     df = pd.read_csv(percorso_file)
 
-    # Uniforma i nomi delle colonne per evitare inconsistenze tra file
+    # Uniforma nomi colonne
     df.columns = [colonna.lower().strip() for colonna in df.columns]
 
-    # Aggiunta informazioni utili per il confronto
+    # Aggiunta metadati
     df["orizzonte"] = orizzonte
     df["tipo_modello"] = "machine_learning"
     df["modello"] = df["modello"].str.lower()
@@ -82,10 +86,12 @@ for orizzonte, percorso_file in percorsi_file_ml.items():
     lista_risultati_ml.append(df)
 
 if not lista_risultati_ml:
-    raise ValueError("Nessun file di risultati ML trovato")
+    raise ValueError("Nessun file ML trovato")
 
 df_ml = pd.concat(lista_risultati_ml, ignore_index=True)
 
+
+# Caricamento risultati DL
 
 print("Caricamento risultati deep learning")
 
@@ -94,40 +100,75 @@ if not os.path.exists(percorso_file_dl):
 
 df_dl = pd.read_csv(percorso_file_dl)
 
-# Uniforma i nomi delle colonne
+# Uniforma nomi colonne
 df_dl.columns = [colonna.lower().strip() for colonna in df_dl.columns]
 
 # Aggiunta metadati
 df_dl["modello"] = "convlstm"
 df_dl["tipo_modello"] = "deep_learning"
 
-# Il ConvLSTM è stato valutato solo su T+1
+# ConvLSTM disponibile solo per T+1
 df_dl["orizzonte"] = 1
 
 
-# Unione risultati ML e DL
+# Unione dataset
+
 df_confronto = pd.concat([df_ml, df_dl], ignore_index=True)
 
-# Salvataggio dataset di confronto
+# Salvataggio dataset confronto
 df_confronto.to_csv(percorso_output_confronto, index=False)
 
-print("\nDataset di confronto salvato in:")
+print("\nDataset confronto salvato:")
 print(percorso_output_confronto)
 
 
-# Calcolo metriche medie per combinazione di target, modello e orizzonte
+# Riepilogo metriche
+
 df_riassunto = (
     df_confronto
-    .groupby(["target", "modello", "tipo_modello", "orizzonte"])[["rmse", "mae", "r2"]]
+    .groupby(
+        ["target", "modello", "tipo_modello", "orizzonte"]
+    )[["rmse", "mae", "r2"]]
     .mean()
     .reset_index()
 )
 
-print("\nPrime righe del riepilogo:")
+print("\nPrime righe riepilogo:")
 print(df_riassunto.head())
 
 
-# Grafico RMSE per ciascuna variabile nel caso T+1
+# Grafico globale ConvLSTM vs ML
+
+df_globale = (
+    df_riassunto[df_riassunto["orizzonte"] == 1]
+    .groupby("modello")["rmse"]
+    .mean()
+    .reset_index()
+)
+
+plt.figure(figsize=(8, 5))
+
+plt.bar(
+    df_globale["modello"],
+    df_globale["rmse"]
+)
+
+plt.title("Confronto RMSE medio tra modelli")
+plt.xlabel("Modello")
+plt.ylabel("RMSE medio")
+
+plt.grid(axis="y", linestyle="--", alpha=0.6)
+
+plt.tight_layout()
+plt.savefig(percorso_grafico_globale, dpi=300)
+plt.close()
+
+print("\nGrafico confronto globale salvato:")
+print(percorso_grafico_globale)
+
+
+# Grafico RMSE per variabile T+1
+
 df_pivot = (
     df_riassunto[df_riassunto["orizzonte"] == 1]
     .groupby(["target", "modello"])["rmse"]
@@ -136,31 +177,40 @@ df_pivot = (
 )
 
 df_pivot.plot(kind="bar", figsize=(12, 6))
-
 plt.title("Confronto RMSE per ciascuna variabile (T+1)")
 plt.xlabel("Variabile target")
 plt.ylabel("RMSE")
 
 plt.xticks(rotation=45)
+
 plt.grid(axis="y", linestyle="--", alpha=0.6)
 
 plt.tight_layout()
 plt.savefig(percorso_grafico_rmse, dpi=300)
 plt.close()
 
-print("Grafico RMSE salvato in:", percorso_grafico_rmse)
+print("\nGrafico RMSE variabili salvato:")
+print(percorso_grafico_rmse)
 
 
-# Grafico andamento RMSE al crescere dell’orizzonte (solo ML)
+# Grafico RMSE vs orizzonte
+
 df_andamento = (
-    df_riassunto[df_riassunto["tipo_modello"] == "machine_learning"]
-    .groupby(["orizzonte"])["rmse"]
+    df_riassunto[
+        df_riassunto["tipo_modello"] == "machine_learning"
+    ]
+    .groupby("orizzonte")["rmse"]
     .mean()
     .reset_index()
 )
 
 plt.figure(figsize=(8, 5))
-plt.plot(df_andamento["orizzonte"], df_andamento["rmse"], marker="o")
+
+plt.plot(
+    df_andamento["orizzonte"],
+    df_andamento["rmse"],
+    marker="o"
+)
 
 plt.title("Variazione RMSE al crescere dell'orizzonte temporale")
 plt.xlabel("Orizzonte (ore)")
@@ -172,7 +222,7 @@ plt.tight_layout()
 plt.savefig(percorso_grafico_orizzonte, dpi=300)
 plt.close()
 
-print("Grafico RMSE vs orizzonte salvato in:", percorso_grafico_orizzonte)
-
+print("\nGrafico RMSE vs orizzonte salvato:")
+print(percorso_grafico_orizzonte)
 
 print("\nConfronto tra modelli completato")
