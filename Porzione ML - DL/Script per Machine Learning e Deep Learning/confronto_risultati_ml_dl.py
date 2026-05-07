@@ -27,8 +27,6 @@ percorsi_file_ml = {
 }
 
 # Percorso file ConvLSTM
-# Lo script cerca prima nella cartella standard del progetto.
-# Se il file non esiste, prova automaticamente nella directory corrente.
 
 percorso_file_dl_standard = os.path.join(
     "dataset_intero",
@@ -112,7 +110,42 @@ df_dl = pd.read_csv(percorso_file_dl)
 # Uniforma nomi colonne
 df_dl.columns = [colonna.lower().strip() for colonna in df_dl.columns]
 
+print("\nColonne trovate nel CSV ConvLSTM:")
+print(df_dl.columns.tolist())
+
+
+# Rinominazione automatica colonne principali
+
+mappa_colonne = {}
+
+for colonna in df_dl.columns:
+
+    nome = colonna.lower()
+
+    if "rmse" in nome:
+        mappa_colonne[colonna] = "rmse"
+
+    elif "mae" in nome:
+        mappa_colonne[colonna] = "mae"
+
+    elif nome == "r2" or "r2" in nome:
+        mappa_colonne[colonna] = "r2"
+
+    elif "target" in nome or "variabile" in nome:
+        mappa_colonne[colonna] = "target"
+
+df_dl = df_dl.rename(columns=mappa_colonne)
+
+
+# Se il CSV ConvLSTM non contiene target,
+# viene creato un target generico
+
+if "target" not in df_dl.columns:
+    df_dl["target"] = "convlstm"
+
+
 # Aggiunta metadati
+
 df_dl["modello"] = "convlstm"
 df_dl["tipo_modello"] = "deep_learning"
 
@@ -179,7 +212,10 @@ print(percorso_grafico_globale)
 # Grafico RMSE per variabile T+1
 
 df_pivot = (
-    df_riassunto[df_riassunto["orizzonte"] == 1]
+    df_riassunto[
+        (df_riassunto["orizzonte"] == 1) &
+        (df_riassunto["tipo_modello"] == "machine_learning")
+    ]
     .groupby(["target", "modello"])["rmse"]
     .mean()
     .unstack()
