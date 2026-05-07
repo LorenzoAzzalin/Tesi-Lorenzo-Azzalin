@@ -9,14 +9,7 @@ cartella_risultati_ml = os.path.join(
     "risultati"
 )
 
-# Cartella contenente i risultati del modello deep learning (ConvLSTM)
-cartella_risultati_dl = os.path.join(
-    "dataset_intero",
-    "deep_learning",
-    "risultati"
-)
-
-# Cartella dove verranno salvati dataset di confronto e grafici
+# Cartella confronto output
 cartella_confronto = os.path.join(
     "dataset_intero",
     "confronto_modelli"
@@ -33,11 +26,30 @@ percorsi_file_ml = {
     24: os.path.join(cartella_risultati_ml, "ml_risultati_T24.csv"),
 }
 
-# Percorso del file dei risultati deep learning
-percorso_file_dl = os.path.join(
-    cartella_risultati_dl,
+# Percorso file ConvLSTM
+# Lo script cerca prima nella cartella standard del progetto.
+# Se il file non esiste, prova automaticamente nella directory corrente.
+
+percorso_file_dl_standard = os.path.join(
+    "dataset_intero",
+    "deep_learning",
+    "risultati",
     "risultati_convlstm.csv"
 )
+
+percorso_file_dl_locale = "risultati_convlstm.csv"
+
+if os.path.exists(percorso_file_dl_standard):
+    percorso_file_dl = percorso_file_dl_standard
+
+elif os.path.exists(percorso_file_dl_locale):
+    percorso_file_dl = percorso_file_dl_locale
+
+else:
+    raise FileNotFoundError(
+        "File risultati_convlstm.csv non trovato"
+    )
+
 
 # Percorsi file output
 percorso_output_confronto = os.path.join(
@@ -91,12 +103,9 @@ if not lista_risultati_ml:
 df_ml = pd.concat(lista_risultati_ml, ignore_index=True)
 
 
-# Caricamento risultati DL
+# Caricamento risultati ConvLSTM
 
-print("Caricamento risultati deep learning")
-
-if not os.path.exists(percorso_file_dl):
-    raise FileNotFoundError(f"File DL mancante: {percorso_file_dl}")
+print("Caricamento risultati ConvLSTM")
 
 df_dl = pd.read_csv(percorso_file_dl)
 
@@ -177,6 +186,7 @@ df_pivot = (
 )
 
 df_pivot.plot(kind="bar", figsize=(12, 6))
+
 plt.title("Confronto RMSE per ciascuna variabile (T+1)")
 plt.xlabel("Variabile target")
 plt.ylabel("RMSE")
