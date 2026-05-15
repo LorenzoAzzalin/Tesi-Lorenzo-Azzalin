@@ -53,7 +53,7 @@ for regione in regioni:
 
     # La direzione delle onde (mwd) è una variabile angolare.
     # Viene trasformata in componenti seno e coseno per:
-    # - evitare discontinuità (0° ≈ 360°)
+    # - evitare discontinuità 
     # - facilitare l'apprendimento da parte del modello
     if "mwd" in dataset.data_vars:
         print("Trasformazione mwd in sin e cos")
