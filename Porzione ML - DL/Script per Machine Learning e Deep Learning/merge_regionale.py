@@ -100,7 +100,7 @@ for regione in regioni:
         percorso_temp = os.path.join(cartella_temporanei, f"{nome_base}_finale.nc")
 
         # Controllo integrità file temporaneo
-        # Se esiste ma è corrotto → viene rigenerato
+        # Se esiste ma è corrotto viene rigenerato
         if os.path.exists(percorso_temp):
             try:
                 xr.open_dataset(percorso_temp).close()
